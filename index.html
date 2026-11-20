@@ -123,8 +123,6 @@
       const texto = quitarTildes(buscador.value);
       const catSeleccionada = filtroCategoria.value;
 
-      contenedor.innerHTML = '';
-
       const filtrados = PRODUCTOS.filter(p => {
         const nombreSinTilde = quitarTildes(p.nombre);
         const descSinTilde = quitarTildes(p.descripcion);
@@ -133,7 +131,7 @@
         return coincideTexto && coincideCat;
       });
 
-      filtrados.forEach(prod => {
+      const htmlTarjetas = filtrados.map(prod => {
         const precioLimpio = (prod.precio || "").trim();
         const tieneVariasLineas = /\r?\n/.test(precioLimpio);
 
@@ -156,9 +154,9 @@
         );
         const linkWa = `https://wa.me/${TELEFONO_WHATSAPP}?text=${mensaje}`;
 
-        contenedor.innerHTML += `
+        return `
           <div class="tarjeta">
-            <img src="${prod.imagen}" alt="${prod.nombre}" loading="lazy">
+            <img src="${prod.imagen}" alt="${prod.nombre}">
             <div class="info">
               <span class="categoria">${prod.categoria}</span>
               <h2 class="nombre">${prod.nombre}</h2>
@@ -169,18 +167,32 @@
             </div>
           </div>
         `;
-      });
+      }).join('');
+
+      contenedor.innerHTML = htmlTarjetas;
     }
 
     async function cargarProductos() {
       const resp = await fetch(CSV_URL);
       const texto = await resp.text();
-      const filas = parsearCSVCompleto(texto).slice(4);
+      // Omite la fila de encabezados y deja Bálsamo labial de fresita en el primer lugar
+      const filas = parsearCSVCompleto(texto).slice(1);
 
       PRODUCTOS = filas
         .map(cols => {
-          const nombre = cols[1] || "";
-          if (!nombre) return null;
+          const idCol = (cols[0] || "").trim().toLowerCase();
+          const nombre = (cols[1] || "").trim();
+          const categoria = (cols[2] || "").trim();
+
+          // Ignora filas vacías o filas que correspondan a encabezados de tabla
+          if (
+            !nombre ||
+            nombre.toLowerCase() === "nombre" ||
+            idCol.startsWith("id") ||
+            categoria.toLowerCase() === "categoria"
+          ) {
+            return null;
+          }
 
           return {
             nombre,
